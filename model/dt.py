@@ -1,9 +1,5 @@
 import numpy as np
 from collections import Counter
-from sklearn.model_selection import train_test_split
-
-TYPES = ['virginica', 'versicolor', 'setosa']
-TYPES_ID = {tp : i for (i, tp) in enumerate(TYPES)}
 
 class DT_node():
     def __init__(self, ans=None, feature=None, son=None):
@@ -12,11 +8,13 @@ class DT_node():
         self.son      =   son
 
 class DecisionTree():
-    def __init__(self, data=None):
+    def __init__(self, data=None, min_gain=0.8):
+        self.min_gain = min_gain
         if data is not None: self.fit(data)
 
     def fit(self, data):
         self.root = self.build(data)
+        # self.prune(self.root)
 
     def gini(self, y):
         counter = Counter(y)
@@ -27,7 +25,7 @@ class DecisionTree():
         return res
 
     def split(self, data, i, v):
-        f0 = [x[i] >= v for x in data[0]]
+        f0 = [x[i] <= v for x in data[0]]
         f1 = [not x for x in f0]
         return (data[0][f0], data[1][f0]), (data[0][f1], data[1][f1])
 
@@ -54,12 +52,13 @@ class DecisionTree():
             return DT_node(feature=best_feature, 
                            son = [self.build(best_split[0]), self.build(best_split[1])])
         else:
-            res_counter = Counter(data[1])
-            res = max(res_counter, key=res_counter.get)
-            return DT_node(ans=res)
+            return DT_node(ans=Counter(data[1]))
 
     def pred(self, node, x):
-        return node.ans if node.ans is not None else self.pred(node.son[int(x[node.feature[0]] < node.feature[1])], x) 
+        if node.ans is not None:
+            res_counter = Counter(node.ans)
+            return max(res_counter, key=res_counter.get)
+        return self.pred(node.son[int(x[node.feature[0]] > node.feature[1])], x) 
 
     def predict(self, X):
         return [self.pred(self.root, x) for x in X]
@@ -70,20 +69,22 @@ class DecisionTree():
         for i in range(m): n += int(res[i]==y[i])
         print('{}/{}, Acc: {:.2f}%'.format(int(n), m, (100. * n) / m))
 
+    def prune(self, node):
+        if not node.son: return
+        self.prune(node.son[0])
+        self.prune(node.son[1])
 
-def read_data():
-    data = [line.split(' ') for line in open('iris.txt').readlines()[1:]]
-    X = np.array([line[1:-1] for line in data]).astype(np.float64)
-    y = np.array([TYPES_ID[line[-1][:-1].strip('"')] for line in data]).astype(np.int)
-    return X, y
+        if node.son[0].ans is not None and node.son[1].ans is not None:
+            # print(type(node.son[0].ans), type(node.son[1].ans))
+            b0, b1 = [], []
+            for k in node.son[0].ans: b0 += [k] * node.son[0].ans[k]
+            for k in node.son[1].ans: b1 += [k] * node.son[1].ans[k]
 
-if __name__ == '__main__':
-    X, y = read_data()
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=996)
-    
-    dt = DecisionTree((X_train, y_train))
+            bb    = b0 + b1
+            # print(type(b0), type(b1), type(bb))
+            p     = float(len(b0)) / len(bb)
+            delta = self.gini(bb) - p*self.gini(b0) - (1-p)*self.gini(b1)
 
-    print('Training set:', end='\t')
-    dt.score(X_train, y_train)  
-    print('Test set:', end='\t')
-    dt.score(X_test, y_test)
+            if delta < self.min_gain:
+                node.son = None
+                node.ans = Counter(bb)
