@@ -1,11 +1,12 @@
 import numpy as np
 import random, os
-# from skmultiflow.trees import ExtremelyFastDecisionTreeClassifier as XDT
+from skmultiflow.trees import HoeffdingAdaptiveTreeClassifier as HT
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score
 from sklearn.datasets import load_svmlight_file 
 
 from model.vfdt import Vfdt
+from model.efdt import Efdt
 from oph import OPH_server
 
 DATA_PATH = './data'
@@ -33,23 +34,26 @@ def read_dataset(data_name, fmt='libsvm'):
     else:
         X, X_test, y, y_test = train_test_split(X, y, test_size=0.33)
     print('Data preprocessed.')
+    random.Random(2).shuffle(X)
+    random.Random(2).shuffle(y)
     return X, X_test, y, y_test
 
 if __name__ == '__main__':
-    _OPH = False
+    _OPH = True
     if _OPH: print("OPH enabled.")
-    X_train, X_test, y_train, y_test = read_dataset('covtype', fmt='libsvm')
+    X_train, X_test, y_train, y_test = read_dataset('a9a', fmt='libsvm')
     # exit()
     
-    encoder = OPH_server(a=32, r=20)
+    encoder = OPH_server(a=512, r=16)
     tree = Vfdt(len(X_test[0]))
+    # tree = HT()
     
     if _OPH:
         print(X_test[0][:5])
         X_train, X_test = encoder.encode(X_train), encoder.encode(X_test)
         print(X_test[0][:5])
     
-    tree.update(X_train, y_train)
+    tree.partial_fit(X_train, y_train)
     
     y_pred = tree.predict(X_test)
     print('Acc: {:.2f}'.format(accuracy_score(y_test, y_pred) * 100), end=' ')
