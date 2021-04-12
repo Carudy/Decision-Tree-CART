@@ -1,4 +1,4 @@
 32
-IDT Acc: 62.67, Cost 10.221s
-OPH Acc: 62.80, Cost 14.034s
-RC  Acc: 63.02, Cost 10.370s
+IDT Acc: 65.50, Cost 11.260s
+OPH Acc: 66.81, Cost 15.563s
+RC  Acc: 65.21, Cost 10.143s

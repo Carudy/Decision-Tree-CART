@@ -8,7 +8,7 @@ import numpy as np
 from itertools import combinations
 from sklearn.metrics import accuracy_score, precision_recall_fscore_support
 from collections import defaultdict as dd
-import progressbar
+from tqdm import tqdm
 
 # VFDT node class
 class VfdtNode:
@@ -191,7 +191,7 @@ class Vfdt:
         else:
             if self.progress:
                 data = list(zip(X, y))
-                for i in progressbar.progressbar(range(1, len(data)+1)):
+                for i in tqdm(range(1, len(data)+1)):
                     x, _y = data[i-1]
                     self.update_single(x, _y)
                     if i % self.T == 0: self.vals.append(self.root.num_vals())
