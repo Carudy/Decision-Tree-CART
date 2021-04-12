@@ -65,7 +65,7 @@ class EfdtNode:
         if self.is_leaf():
             self.attempt_split(delta, nmin, tau)
         else:
-            if 50 <= self.tot_data <= 300: self.re_evaluate_split(delta, nmin, tau)
+            self.re_evaluate_split(delta, nmin, tau)
             if self.is_leaf(): return
             son = self.l_son if x[self.key_feat] <= self.key_value else self.r_son
             son.sort_example(x, y, delta, nmin, tau)
@@ -87,7 +87,7 @@ class EfdtNode:
         epsilon = self.hoeffding_bound(delta)
         g_X0 = self.calc_gini(self.label_freq)
         if (g_Xa < g_X0) and (g_Xb - g_Xa > epsilon) or (g_Xb - g_Xa < epsilon < tau):
-            self.split_g = g_Xa
+            # self.split_g = g_Xa
             self.node_split(Xa, split_value)
 
     def re_evaluate_split(self, delta, nmin, tau):
@@ -97,17 +97,21 @@ class EfdtNode:
         g_Xa, split_value, Xa, g_Xb = self.cal_min_g()
         epsilon = self.hoeffding_bound(delta)
         g_X0 = self.calc_gini(self.label_freq)
-        split_g = self.split_g
+        cur_g, cur_val = self.gini(self.nijk[self.key_feat])
 
-        if g_Xa > g_X0:  # not split
+        if g_X0 < g_Xa:     # not split
             print('kill 0')
             self.kill_subtree()
 
-        elif (split_g - g_Xa > epsilon or split_g - g_Xa < epsilon < tau) and (Xa != self.key_feat):
+        elif (cur_g > g_Xa) and (cur_g - g_Xa > epsilon or cur_g - g_Xa < epsilon < tau) and (Xa != self.key_feat):
             # print('kill 1')
             self.kill_subtree()
             self.split_g = g_Xa
             self.node_split(Xa, split_value)
+
+        else:
+            # print('change v')
+            self.key_value = cur_val
 
     def kill_subtree(self):
         if not self.is_leaf():
@@ -125,30 +129,24 @@ class EfdtNode:
         return (R * R * np.log(1/delta) / (2 * n))**0.5
 
     def gini(self, njk):
-        # Gini(D) = 1 - Sum(pi^2)
-        # Gini(D, F=f) = |D1|/|D|*Gini(D1) + |D2|/|D|*Gini(D2)
-        D = self.tot_data
-        m1 = 1
-        Xa_value = None
-        feature_values = list(njk.keys())  # list() is essential
-
-        sort = np.array(sorted(feature_values))
-        split = (sort[0:-1] + sort[1:]) / 2
-        D1_cf = {j:0 for j in self.label_freq.keys()}
+        D, min_g, Xa_value  = self.tot_data, 1, None
+        sort  = np.array(sorted(list(njk.keys())))
+        split = (sort[:-1] + sort[1:]) / 2
+        D1_cf = {j: 0 for j in self.label_freq.keys()}
+        D2_cf = self.label_freq.copy()
+        D1, D2 = 0, D
         for index in range(len(split)):
             nk = njk[sort[index]]
-            for j in nk: D1_cf[j] += nk[j]
-            D2_cf = {k : v - D1_cf[k] if k in D1_cf else v for k, v in self.label_freq.items()}
-            D1 = sum(D1_cf.values())
+            for j in nk: 
+                D1_cf[j] += nk[j]
+                D2_cf[j] -= nk[j]
+                D1 += nk[j]
             D2 = D - D1
-            g_d1 = self.calc_gini(D1_cf)
-            g_d2 = self.calc_gini(D2_cf)
-            g = g_d1*D1/D + g_d2*D2/D
-            if g < m1:
-                m1 = g
+            g = self.calc_gini(D1_cf) * D1 / D + self.calc_gini(D2_cf) * D2 / D
+            if g < min_g:
+                min_g = g
                 Xa_value = split[index]
-
-        return [m1, Xa_value]
+        return [min_g, Xa_value]
 
 
 class Efdt:
