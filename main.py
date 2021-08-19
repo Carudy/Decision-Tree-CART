@@ -23,7 +23,7 @@ def full_test(dataset, cmd=0b111, depths=[32]):
         st = time.time()
         if cmd & 1:
             # Normal IDT
-            tree = Vfdt(num_feature, delta=1e-7, nmin=10000, tau=0.5, max_depth=max_depth, regional=None)
+            tree = Vfdt(num_feature)
             tree.partial_fit(X_train, y_train)
             y_pred = tree.predict(X_test)
             info_now = 'IDT Acc: {:.2f}'.format(accuracy_score(y_test, y_pred) * 100)
@@ -38,7 +38,7 @@ def full_test(dataset, cmd=0b111, depths=[32]):
 
         if cmd & 2:
             # OPH-IDT
-            tree = Vfdt(num_feature, delta=1e-7, nmin=10000, tau=0.5, max_depth=max_depth, regional=None)
+            tree = Vfdt(num_feature, delta=1e-7, nmin=200, tau=0.05, max_depth=max_depth, regional=None)
             tree.partial_fit(X_train_oph, y_train)
             y_pred = tree.predict(X_test_oph)
             info_now = 'OPH Acc: {:.2f}'.format(accuracy_score(y_test, y_pred) * 100)
@@ -96,7 +96,7 @@ def full_test(dataset, cmd=0b111, depths=[32]):
 
 
 if __name__ == '__main__':
-    full_test('sen', cmd=0b111, depths=[32])
+    full_test('HIGGS', cmd=0b1, depths=[32])
 
 # all_ddos
 # sen 67.64 67.49 67.82

@@ -8,7 +8,8 @@ from tqdm.auto import tqdm
 
 # VFDT node class
 class Vnode:
-    def __init__(self, num_feature, depth=1, max_depth=18, parent=None, regional=None):
+    def __init__(self, depth=1, parent=None, base=None):
+        self.base = base
         self.parent = parent
         self.l_son = None
         self.r_son = None
@@ -17,24 +18,14 @@ class Vnode:
         self.new_data = 0
         self.tot_data = 0
         self.label_freq = defaultdict(int)
-        self.num_feature = num_feature
-        self.nijk = {i: {} for i in range(num_feature)}
+        self.nijk = {i: {} for i in range(self.base.num_feature)}
         self.depth = depth
-        self.max_depth = max_depth
-        self.regional = regional
 
     def node_split(self, split_feature, split_value):
         self.split_feature = split_feature
         self.split_value = split_value
-        self.l_son = Vnode(self.num_feature,
-                           depth=self.depth + 1,
-                           max_depth=self.max_depth,
-                           regional=self.regional)
-        self.r_son = Vnode(self.num_feature,
-                           depth=self.depth + 1,
-                           max_depth=self.max_depth,
-                           regional=self.regional)
-        self.l_son.parent = self.r_son.parent = self
+        self.l_son = Vnode(depth=self.depth + 1, parent=self, base=self.base)
+        self.r_son = Vnode(depth=self.depth + 1, parent=self, base=self.base)
         del self.nijk
 
     def is_leaf(self):
@@ -43,26 +34,27 @@ class Vnode:
     def check_branch(self, value):
         return value <= self.split_value
 
-    # recursively trace down the tree to distribute data examples to corresponding leaves
     def sort_to_leaf(self, x):
         if self.is_leaf():
             return self
         value = x[self.split_feature]
         return self.l_son.sort_to_leaf(x) if self.check_branch(value) else self.r_son.sort_to_leaf(x)
 
-    # the most frequent class
     def most_frequent(self):
-        if bool(self.label_freq): return max(self.label_freq, key=self.label_freq.get)
+        if bool(self.label_freq):
+            return max(self.label_freq, key=self.label_freq.get)
         return self.parent.most_frequent()
 
     def add_nijk(self, i, j, k):
-        if j not in self.nijk[i]: self.nijk[i][j] = {}
-        if k not in self.nijk[i][j]: self.nijk[i][j][k] = 0
+        if j not in self.nijk[i]:
+            self.nijk[i][j] = {}
+        if k not in self.nijk[i][j]:
+            self.nijk[i][j][k] = 0
         self.nijk[i][j][k] += 1
 
-    # update leaf stats in order to calculate gini
-    def update_stats(self, x, y):
-        for key in range(self.num_feature): self.add_nijk(key, x[key], y)
+    def update_statistics(self, x, y):
+        for key in range(self.base.num_feature):
+            self.add_nijk(key, x[key], y)
         self.tot_data += 1
         self.new_data += 1
         self.label_freq[y] += 1
@@ -71,31 +63,30 @@ class Vnode:
     def calc_gini(self, arr):
         res, n = 1, sum(arr.values())
         if n == 0:
-            print('GG')
+            print('Wrong arr for gini.')
             return 1
         for j, k in arr.items(): res -= (k / n) ** 2
         return res
 
     # use Hoeffding tree model to test node split, return the split feature
-    def attempt_split(self, delta, nmin, tau):
-        if self.depth >= self.max_depth > 0: return
-        if self.new_data < nmin:      return
-        if len(self.label_freq) == 1: return
-
+    def attempt_split(self):
+        if (self.depth >= self.base.max_depth > 0) or (self.new_data < self.base.nmin) or (len(self.label_freq) <= 1):
+            return
         self.new_data = 0
-        if self.regional is not None:
-            for feature in range(self.num_feature): self.maintain(feature)
+
+        if self.base.regional:
+            for feature in range(self.base.num_feature):
+                self.maintain(feature)
 
         ginis = sorted(self.gini(feature) + [feature] for feature in self.nijk)
-        min_0, split_value, Xa = ginis[0]
-        min_1 = ginis[1][0]
+        g_best, split_value, split_attr = ginis[0]
+        g_second = ginis[1][0]
 
-        epsilon = self.hoeffding_bound(delta)
-        g_X0 = self.calc_gini(self.label_freq)
+        epsilon = self.hoeffding_bound(self.base.delta)
+        g_empty = self.calc_gini(self.label_freq)
 
-        if (min_0 < g_X0) and ((min_1 - min_0 > epsilon) or (min_1 - min_0 < epsilon < tau)):
-            # if (min_0 < g_X0) and ((min_1 - min_0 > epsilon) or (min_0 / min_1 > 1 - tau)):
-            self.node_split(Xa, split_value)
+        if (g_best != g_empty) and ((g_second - g_best > epsilon) or (g_second - g_best < epsilon < self.base.tau)):
+            self.node_split(split_attr, split_value)
 
     def hoeffding_bound(self, delta):
         n = self.tot_data << 1
@@ -107,20 +98,20 @@ class Vnode:
             return self.l_son.num_vals() + self.r_son.num_vals()
         ret = 0
 
-        if self.regional is not None:
-            for feature in range(self.num_feature): self.maintain(feature)
+        if self.base.regional:
+            for feature in range(self.base.num_feature): self.maintain(feature)
 
         for fea in self.nijk:
             ret += len(list(self.nijk[fea].keys()))
         return ret
 
-    # Regional counting 
-    # ddos 256 sen 128 covtype 200 
+    # Regional counting
+    # ddos 256 sen 128 covtype 200
     def maintain(self, feature):
         # if self.depth >= self.max_depth * 0.66: return
         vals = sorted(list(self.nijk[feature].keys()))
         if len(vals) < 256: return
-        pace = self.regional
+        pace = self.base.regional
         v0 = np.array(vals)
         v0 = min(v0[1:] - v0[:-1])
         if v0 > pace: return
@@ -149,14 +140,13 @@ class Vnode:
     # gini(D, F=f) = |D1|/|D|*gini(D1) + |D2|/|D|*gini(D2)
     def gini(self, feature):
         njk = self.nijk[feature]
-        D, min_g, Xa_value = self.tot_data, 1, None
+        D, g_min, split_value = self.tot_data, 1, None
         sort = np.array(sorted(list(njk.keys())))
-        split = (sort[:-1] + sort[1:]) / 2
-        # print(len(split))
+        keys = (sort[:-1] + sort[1:]) / 2
         D1_cf = {j: 0 for j in self.label_freq.keys()}
         D2_cf = self.label_freq.copy()
-        D1, D2 = 0, D
-        for index in range(len(split)):
+        D1 = 0
+        for index in range(len(keys)):
             nk = njk[sort[index]]
             for j in nk:
                 D1_cf[j] += nk[j]
@@ -164,50 +154,53 @@ class Vnode:
                 D1 += nk[j]
             D2 = D - D1
             g = self.calc_gini(D1_cf) * D1 / D + self.calc_gini(D2_cf) * D2 / D
-            if g < min_g:
-                min_g = g
-                Xa_value = split[index]
-        return [min_g, Xa_value]
+            if g < g_min:
+                g_min = g
+                split_value = keys[index]
+        return [g_min, split_value]
 
 
 # very fast decision tree class, i.e. hoeffding tree
 class Vfdt:
-    def __init__(self, num_feature, delta=1e-2, nmin=200, tau=0.05, max_depth=-1, regional=None):
+    def __init__(self, num_feature, delta=1e-9, nmin=1500, tau=0.05, max_depth=-1, regional=False, verbose=True):
+        self.max_depth = max_depth
+        self.regional = regional
+        self.num_feature = num_feature
+        self.verbose = verbose
         self.delta = delta
         self.nmin = nmin
         self.tau = tau
-        self.root = Vnode(num_feature, max_depth=max_depth, regional=regional)
-        self.num_feature = num_feature
+        self.root = Vnode(base=self)
         self.last_node = 0
-        self.progress = True
         self.T = 100000
         self.vals = []
 
-    def update(self, X, y):
-        if isinstance(y, int):
-            self.update_single(X, y)
+    def update(self, xs, ys):
+        if isinstance(ys, int):
+            self.update_single(xs, ys)
         else:
-            if self.progress:
-                data = list(zip(X, y))
+            if self.verbose:
+                data = list(zip(xs, ys))
                 for i in tqdm(range(1, len(data) + 1)):
-                    x, _y = data[i - 1]
-                    self.update_single(x, _y)
-                    if i % self.T == 0: self.vals.append(self.root.num_vals())
+                    x, y = data[i - 1]
+                    self.update_single(x, y)
+                    if i % self.T == 0:
+                        self.vals.append(self.root.num_vals())
             else:
-                for x, _y in zip(X, y): self.update_single(x, _y)
-        # print('num vals: {}'.format(self.root.num_vals()))
+                for x, y in zip(xs, ys):
+                    self.update_single(x, y)
         print(self.vals)
 
-    def partial_fit(self, X, y):
-        return self.update(X, y)
+    def partial_fit(self, xs, y):
+        return self.update(xs, y)
 
-    def update_single(self, x, _y):
+    def update_single(self, x, y):
         node = self.root.sort_to_leaf(x)
-        node.update_stats(x, _y)
-        node.attempt_split(self.delta, self.nmin, self.tau)
+        node.update_statistics(x, y)
+        node.attempt_split()
 
-    def predict(self, X):
-        return [self.predict_single(x) for x in X]
+    def predict(self, xs):
+        return [self.predict_single(x) for x in xs]
 
     def predict_single(self, x):
         leaf = self.root.sort_to_leaf(x)
