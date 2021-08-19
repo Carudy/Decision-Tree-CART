@@ -1,2 +1,3 @@
-32
-IDT Acc: 66.03, Cost 1063.025s
+IDT: ACC:65.32 time:28.30
+OPH: ACC:66.99 time:93.49
+RC: ACC:65.94 time:45.94

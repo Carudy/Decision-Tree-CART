@@ -8,9 +8,9 @@ class Pope:
 
     def encode(self, X):
         sign = (X > 0).astype(np.int) * 1 + (X < 0).astype(np.int) * -1
-        C = np.random.rand(X.shape[0], X.shape[1]).astype(np.float32)
-        D = 1 - np.power(1.001, -np.abs(X))
-        return (X * self.a) + (C * 0.5 + D * 0.5) * sign * self.r
+        C = np.random.rand(*X.shape).astype(np.float32)
+        D = 1 - np.power(2, -np.abs(X))
+        return (X * self.a) + (C + D) * sign * self.r * 0.5
 
 
 if __name__ == '__main__':

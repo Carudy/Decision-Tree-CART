@@ -1,6 +1,3 @@
-'''
-    Modified & fixed version of: https://github.com/doubleplusplus/incremental_decision_tree-CART-Random_Forest
-'''
 import numpy as np
 from collections import defaultdict
 from tqdm.auto import tqdm
@@ -8,7 +5,8 @@ from tqdm.auto import tqdm
 
 # VFDT node class
 class Vnode:
-    def __init__(self, depth=1, parent=None, base=None):
+    def __init__(self, depth=1, parent=None, possible_features=None, base=None):
+        self.possible_features = set(possible_features)
         self.base = base
         self.parent = parent
         self.l_son = None
@@ -24,8 +22,10 @@ class Vnode:
     def node_split(self, split_feature, split_value):
         self.split_feature = split_feature
         self.split_value = split_value
-        self.l_son = Vnode(depth=self.depth + 1, parent=self, base=self.base)
-        self.r_son = Vnode(depth=self.depth + 1, parent=self, base=self.base)
+        new_possible_features = self.possible_features.copy()
+        new_possible_features.remove(split_feature)
+        self.l_son = Vnode(depth=self.depth + 1, parent=self, base=self.base, possible_features=new_possible_features)
+        self.r_son = Vnode(depth=self.depth + 1, parent=self, base=self.base, possible_features=new_possible_features)
         del self.nijk
 
     def is_leaf(self):
@@ -73,12 +73,9 @@ class Vnode:
         if (self.depth >= self.base.max_depth > 0) or (self.new_data < self.base.nmin) or (len(self.label_freq) <= 1):
             return
         self.new_data = 0
+        self.regional_count()
 
-        if self.base.regional:
-            for feature in range(self.base.num_feature):
-                self.maintain(feature)
-
-        ginis = sorted(self.gini(feature) + [feature] for feature in self.nijk)
+        ginis = sorted([self.gini(feature) + [feature] for feature in self.possible_features if feature in self.nijk])
         g_best, split_value, split_attr = ginis[0]
         g_second = ginis[1][0]
 
@@ -97,45 +94,38 @@ class Vnode:
         if not self.is_leaf():
             return self.l_son.num_vals() + self.r_son.num_vals()
         ret = 0
-
-        if self.base.regional:
-            for feature in range(self.base.num_feature): self.maintain(feature)
-
+        self.regional_count()
         for fea in self.nijk:
             ret += len(list(self.nijk[fea].keys()))
         return ret
 
     # Regional counting
     # ddos 256 sen 128 covtype 200
-    def maintain(self, feature):
-        # if self.depth >= self.max_depth * 0.66: return
-        vals = sorted(list(self.nijk[feature].keys()))
-        if len(vals) < 256: return
-        pace = self.base.regional
-        v0 = np.array(vals)
-        v0 = min(v0[1:] - v0[:-1])
-        if v0 > pace: return
-        # print(len(vals), end='_')
-        i, n_vals = 0, len(vals)
-        new_jk = {}
-        # print(vals[:2], end=' ')
-        # print(vals[-2:], end=' ')
-        while i < n_vals:
-            j, d = i, defaultdict(int)
-            for k in self.nijk[feature][vals[j]]: d[k] += self.nijk[feature][vals[j]][k]
-            r = vals[i] + pace
-            while j + 1 < n_vals and vals[j + 1] <= r:
-                j += 1
+    def regional_count(self):
+        if not self.base.regional: return
+        features = list(self.nijk.keys())
+        for feature in features:
+            vals = sorted(list(self.nijk[feature].keys()))
+            if len(vals) < 256: return
+            pace = self.base.region_size
+            v0 = np.array(vals)
+            v0 = min(v0[1:] - v0[:-1])
+            if v0 > pace: return
+            i, n_vals = 0, len(vals)
+            new_jk = {}
+            while i < n_vals:
+                j, d = i, defaultdict(int)
                 for k in self.nijk[feature][vals[j]]: d[k] += self.nijk[feature][vals[j]][k]
-            m = np.average(vals[i:j + 1])
-            i = j + 1
-            new_jk[m] = {}
-            for k in self.label_freq:
-                if d[k] > 0: new_jk[m][k] = d[k]
-        del self.nijk[feature]
-        self.nijk[feature] = new_jk
-        # vals = sorted(list(self.nijk[feature].keys()))
-        # print(len(vals), end=';')
+                r = vals[i] + pace
+                while j + 1 < n_vals and vals[j + 1] <= r:
+                    j += 1
+                    for k in self.nijk[feature][vals[j]]: d[k] += self.nijk[feature][vals[j]][k]
+                m = np.average(vals[i:j + 1])
+                i = j + 1
+                new_jk[m] = {}
+                for k in self.label_freq:
+                    if d[k] > 0: new_jk[m][k] = d[k]
+            self.nijk[feature] = new_jk
 
     # gini(D, F=f) = |D1|/|D|*gini(D1) + |D2|/|D|*gini(D2)
     def gini(self, feature):
@@ -162,18 +152,21 @@ class Vnode:
 
 # very fast decision tree class, i.e. hoeffding tree
 class Vfdt:
-    def __init__(self, num_feature, delta=1e-9, nmin=1500, tau=0.05, max_depth=-1, regional=False, verbose=True):
+    def __init__(self, num_feature, delta=1e-7, nmin=2500, tau=0.05, max_depth=32, regional_count=None, verbose=True):
         self.max_depth = max_depth
-        self.regional = regional
+        if regional_count is None:
+            self.regional = False
+        else:
+            self.regional = True
+            self.region_size = regional_count
         self.num_feature = num_feature
         self.verbose = verbose
         self.delta = delta
         self.nmin = nmin
         self.tau = tau
-        self.root = Vnode(base=self)
+        self.root = Vnode(base=self, possible_features=list(range(num_feature)))
         self.last_node = 0
         self.T = 100000
-        self.vals = []
 
     def update(self, xs, ys):
         if isinstance(ys, int):
@@ -184,12 +177,11 @@ class Vfdt:
                 for i in tqdm(range(1, len(data) + 1)):
                     x, y = data[i - 1]
                     self.update_single(x, y)
-                    if i % self.T == 0:
-                        self.vals.append(self.root.num_vals())
+                    # if i % self.T == 0:
+                    #     self.vals.append(self.root.num_vals())
             else:
                 for x, y in zip(xs, ys):
                     self.update_single(x, y)
-        print(self.vals)
 
     def partial_fit(self, xs, y):
         return self.update(xs, y)
