@@ -16,7 +16,7 @@ class Vnode:
         self.new_data = 0
         self.tot_data = 0
         self.label_freq = defaultdict(int)
-        self.nijk = {i: {} for i in range(self.base.num_feature)}
+        self.nijk = {i: {} for i in self.base.attrs}
         self.depth = depth
 
     def node_split(self, split_feature, split_value):
@@ -53,7 +53,7 @@ class Vnode:
         self.nijk[i][j][k] += 1
 
     def update_statistics(self, x, y):
-        for key in range(self.base.num_feature):
+        for key in self.base.attrs:
             self.add_nijk(key, x[key], y)
         self.tot_data += 1
         self.new_data += 1
@@ -152,24 +152,29 @@ class Vnode:
 
 # very fast decision tree class, i.e. hoeffding tree
 class Vfdt:
-    def __init__(self, num_feature, delta=1e-7, nmin=2500, tau=0.05, max_depth=32, regional_count=None, verbose=True):
+    def __init__(self, attrs, delta=1e-7, nmin=2500, tau=0.05, max_depth=32, regional_count=None, verbose=True):
         self.max_depth = max_depth
         if regional_count is None:
             self.regional = False
         else:
             self.regional = True
             self.region_size = regional_count
-        self.num_feature = num_feature
+        if isinstance(attrs, int):
+            self.num_feature = attrs
+            self.attrs = list(range(attrs))
+        else:
+            self.num_feature = len(attrs)
+            self.attrs = attrs
         self.verbose = verbose
         self.delta = delta
         self.nmin = nmin
         self.tau = tau
-        self.root = Vnode(base=self, possible_features=list(range(num_feature)))
+        self.root = Vnode(base=self, possible_features=attrs)
         self.last_node = 0
         self.T = 100000
 
     def update(self, xs, ys):
-        if isinstance(ys, int):
+        if not isinstance(ys, list):
             self.update_single(xs, ys)
         else:
             if self.verbose:
@@ -183,8 +188,8 @@ class Vfdt:
                 for x, y in zip(xs, ys):
                     self.update_single(x, y)
 
-    def partial_fit(self, xs, y):
-        return self.update(xs, y)
+    def partial_fit(self, xs, ys):
+        return self.update(xs, ys)
 
     def update_single(self, x, y):
         node = self.root.sort_to_leaf(x)

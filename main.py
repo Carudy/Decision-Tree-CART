@@ -1,52 +1,52 @@
-import time
+import argparse
+
 from sklearn.metrics import accuracy_score
-from sklearn.tree import DecisionTreeClassifier as SDT
-from model import *
-from encryption.oph import Pope
-from read_data import *
+from sklearn.model_selection import train_test_split
+from tqdm.auto import tqdm
+from fed import *
 
 
-def test_model(tree, X_train, Y_train, X_test, Y_test):
-    st = time.time()
-    tree.update(X_train, Y_train)
-    y_pred = tree.predict(X_test)
-    acc = accuracy_score(Y_test, y_pred) * 100
-    ed = time.time()
-    timep = ed - st
-    return {
-        'time': timep,
-        'acc': acc,
-    }
+class MyParser():
+    def __init__(self):
+        self.parser = argparse.ArgumentParser()
+        self.parser.add_argument('--dataset', default='mushrooms')
+        self.parser.add_argument('--n_client', default=5)
+        self.parser.add_argument('--n_round', default=10)
+        self.args = self.parser.parse_args()
+
+    def __getitem__(self, item):
+        return self.args.__getattribute__(item)
+
+    def __getattr__(self, item):
+        return self.args.__getattribute__(item)
 
 
-def test_models(dataset, models):
-    print('Testing dataset: ' + dataset)
-    X_train, X_test, Y_train, Y_test = read_dataset(dataset)
-    print('Data read.')
-    oph_a, oph_r = 512, 16
-    encoder = Pope(a=oph_a, r=oph_r)
-    X_train_oph, X_test_oph = encoder.encode(X_train), encoder.encode(X_test)
-    num_feature = len(X_test[0])
-    print('Data preprocessed.')
-
-    info = ''
-    for name in models:
-        if name == 'IDT':
-            # Normal IDT
-            tree = Vfdt(num_feature)
-            res = test_model(tree, X_train, Y_train, X_test, Y_test)
-        elif name == 'OPH':
-            tree = Vfdt(num_feature)
-            res = test_model(tree, X_train_oph, Y_train, X_test_oph, Y_test)
-        elif name == 'RC':
-            tree = Vfdt(num_feature, regional_count=oph_r)
-            res = test_model(tree, X_train_oph, Y_train, X_test_oph, Y_test)
-        info += f'{name}: ACC:{res["acc"]:.2f} time:{res["time"]:.2f}\n'
-
-    print(info)
-    open('result.txt', 'w').write(info)
+def center_test(xs, ys):
+    _xs = [clients[0].enc_pure({str(k): x[k] for k in range(len(x))}) for x in xs]
+    pred = center.tree.predict(_xs)
+    acc = accuracy_score(pred, [hash_sha(str(y)) for y in ys])
+    print(acc)
 
 
 if __name__ == '__main__':
-    for _ in range(3):
-        test_models('covtype', models=('IDT', 'OPH', 'RC'))
+    args = MyParser()
+
+    xs, ys = read_libsvm(args.dataset)
+    x_train, x_test, y_train, y_test = train_test_split(xs, ys, test_size=0.2)
+    attrs = [hash_sha(str(i)) for i in range(len(xs[0]))]
+    clients = get_clients_with_xy(x_train, y_train, args.n_client)
+    center = Center(attrs=attrs)
+
+    for c in clients:
+        c.center = center
+        c.split_data(args.n_round)
+
+    for e in tqdm(range(args.n_round)):
+        for c in clients:
+            c.send_batch()
+        center.aggregate()
+        center.train()
+
+    n_attrs = len(attrs)
+
+    center_test(x_test, y_test)

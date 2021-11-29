@@ -3,13 +3,15 @@ import numpy as np
 import pandas as pd
 from sklearn.datasets import load_svmlight_file
 
-from client import Client
+from .client import Client
+
 DATA_PATH = Path(r'D:\work\py\Decision-Tree-CART\data')
 
 
 def read_libsvm(name):
     x, y = load_svmlight_file(f'{DATA_PATH}/{name}.libsvm')
     x = x.toarray().astype(np.float32)
+    y = y.astype('int')
     return x, y
 
 
@@ -32,6 +34,10 @@ def get_clients_with_xy(xs, ys, n_type):
         c = Client(n)
         n += 1
         c.dataset = piece
-        c.attrs = [str(i) for i in piece[0].columns]
+        c.attrs = [str(i) for i in piece.columns]
         ret.append(c)
+    c = Client(n)
+    c.attrs = 'label'
+    c.dataset = ys.astype('int').tolist()
+    ret.append(c)
     return ret
