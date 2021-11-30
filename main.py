@@ -21,8 +21,14 @@ class MyParser():
         return self.args.__getattribute__(item)
 
 
-def center_test(xs, ys):
-    _xs = [clients[0].enc_pure({str(k): x[k] for k in range(len(x))}) for x in xs]
+def center_test(xs, ys, keys):
+    def test_enc(x, keys):
+        ret = {}
+        for k, v in x.items():
+            ret[hash_sha(k)] = ope(v, keys[k])
+        return ret
+
+    _xs = [test_enc({str(k): x[k] for k in range(len(x))}, keys) for x in xs]
     pred = center.tree.predict(_xs)
     acc = accuracy_score(pred, [hash_sha(str(y)) for y in ys])
     print(acc)
@@ -40,6 +46,14 @@ if __name__ == '__main__':
     for c in clients:
         c.center = center
         c.split_data(args.n_round)
+        c.send_keys(clients)
+
+    enc_keys = {str(i): 0 for i in range(len(attrs))}
+    for c in clients:
+        c.calc_keys()
+        for i in range(len(attrs)):
+            if enc_keys[str(i)] == 0 and c.keys[str(i)] != 0:
+                enc_keys[str(i)] = c.keys[str(i)]
 
     for e in tqdm(range(args.n_round)):
         for c in clients:
@@ -49,4 +63,8 @@ if __name__ == '__main__':
 
     n_attrs = len(attrs)
 
-    center_test(x_test, y_test)
+    center_test(x_test, y_test, enc_keys)
+    center.decode_tree(enc_keys)
+    pred = center.tree.predict(x_test)
+    acc = accuracy_score(pred, [hash_sha(str(y)) for y in y_test])
+    print(acc)

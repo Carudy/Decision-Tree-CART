@@ -1,6 +1,7 @@
 from collections import defaultdict
 
 from model import Vfdt
+from .encrypt import *
 
 
 def pure_x(x):
@@ -57,3 +58,17 @@ class Center:
 
     def train(self):
         self.tree.update(self.train_x, self.train_y)
+
+    def decode_node(self, node, keys):
+        if node.is_leaf():
+            return
+        for i in range(self.n_attr):
+            if hash_sha(str(i)) == node.split_feature:
+                node.split_feature = i
+                node.split_value /= keys[str(i)]
+                break
+        self.decode_node(node.l_son, keys)
+        self.decode_node(node.r_son, keys)
+
+    def decode_tree(self, keys):
+        self.decode_node(self.tree.root, keys)
