@@ -29,7 +29,7 @@ if __name__ == '__main__':
                 enc_keys[str(i)] = c.keys[str(i)]
 
     # vertical FL training
-    for e in tqdm(range(ARGS.n_round), desc='Train'):
+    for e in tqdm(range(ARGS.n_round), desc='FL Train'):
         for c in clients:
             c.send_batch()
         center.aggregate()
@@ -42,4 +42,6 @@ if __name__ == '__main__':
     center.decode_tree(enc_keys)
     pred = center.tree.predict(x_test)
     acc = accuracy_score(pred, [hash_sha(str(y)) for y in y_test])
-    print(f'Decrypted tree acc: {acc * 100.}%')
+    log(f'Decrypted tree acc: {acc * 100.}%')
+
+    LOG_FP.close()

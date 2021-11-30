@@ -1,3 +1,4 @@
-IDT: ACC:65.32 time:28.30
-OPH: ACC:66.99 time:93.49
-RC: ACC:65.94 time:45.94
+Dataset: mushrooms
+Ori acc: 93.41538461538461%
+Encrypted tree acc: 99.44615384615385%
+Decrypted tree acc: 99.6923076923077%

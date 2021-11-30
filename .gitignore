@@ -1,5 +1,5 @@
 data/
 *__pycache__/
-federated/
 *.zip
 .idea
+result*
