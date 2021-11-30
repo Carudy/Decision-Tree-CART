@@ -1,5 +1,5 @@
 import numpy as np
-from collections import defaultdict
+from collections import defaultdict, Iterable
 from tqdm.auto import tqdm
 
 
@@ -152,7 +152,7 @@ class Vnode:
 
 # very fast decision tree class, i.e. hoeffding tree
 class Vfdt:
-    def __init__(self, attrs, delta=1e-7, nmin=2500, tau=0.05, max_depth=32, regional_count=None, verbose=True):
+    def __init__(self, attrs, delta=1e-7, nmin=500, tau=0.05, max_depth=32, regional_count=None, verbose=True):
         self.max_depth = max_depth
         if regional_count is None:
             self.regional = False
@@ -174,7 +174,7 @@ class Vfdt:
         self.T = 100000
 
     def update(self, xs, ys):
-        if not isinstance(ys, list):
+        if not isinstance(ys, Iterable):
             self.update_single(xs, ys)
         else:
             if self.verbose:

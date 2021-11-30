@@ -15,6 +15,7 @@ class Client:
         self.data_batches = None
         self.to_send_id = 0
         self.center = None
+        self.dp = True
 
     def send_keys(self, all_clients):
         for attr in self.attrs:
@@ -39,7 +40,7 @@ class Client:
     def enc_pure(self, x):
         ret = {}
         for k, v in x.items():
-            ret[hash_sha(k)] = ope(v, self.keys[k])
+            ret[hash_sha(k)] = ope(v, self.keys[k], dp=self.dp)
         return ret
 
     def enc_sample(self, i):

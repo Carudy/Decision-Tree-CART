@@ -1,11 +1,9 @@
-from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.datasets import load_svmlight_file
 
+from .util import *
 from .client import Client
-
-DATA_PATH = Path(r'D:\work\py\Decision-Tree-CART\data')
 
 
 def read_libsvm(name):
