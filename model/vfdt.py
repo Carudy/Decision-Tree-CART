@@ -76,8 +76,15 @@ class Vnode:
         self.regional_count()
 
         ginis = sorted([self.gini(feature) + [feature] for feature in self.possible_features if feature in self.nijk])
+        if not ginis:
+            return
         g_best, split_value, split_attr = ginis[0]
-        g_second = ginis[1][0]
+        if split_value is None:
+            return
+        try:
+            g_second = ginis[1][0]
+        except IndexError:
+            g_second = 0
 
         epsilon = self.hoeffding_bound(self.base.delta)
         g_empty = self.calc_gini(self.label_freq)
@@ -99,8 +106,6 @@ class Vnode:
             ret += len(list(self.nijk[fea].keys()))
         return ret
 
-    # Regional counting
-    # ddos 256 sen 128 covtype 200
     def regional_count(self):
         if not self.base.regional: return
         features = list(self.nijk.keys())

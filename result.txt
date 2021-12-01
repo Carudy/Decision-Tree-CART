@@ -1,4 +1,0 @@
-Dataset: mushrooms
-Ori acc: 93.41538461538461%
-Encrypted tree acc: 99.44615384615385%
-Decrypted tree acc: 99.6923076923077%

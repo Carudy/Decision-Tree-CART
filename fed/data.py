@@ -1,6 +1,7 @@
 import numpy as np
 import pandas as pd
 from sklearn.datasets import load_svmlight_file
+from sklearn.model_selection import train_test_split
 
 from .util import *
 from .client import Client
@@ -9,8 +10,36 @@ from .client import Client
 def read_libsvm(name):
     x, y = load_svmlight_file(f'{DATA_PATH}/{name}.libsvm')
     x = x.toarray().astype(np.float32)
-    y = y.astype('int')
-    return x, y
+    y = y.astype('str')
+    test_path = Path(f'{DATA_PATH}/{name}_test.libsvm')
+    if test_path.exists() and name != 'a9a':
+        xt, yt = load_svmlight_file(str(test_path))
+        xt = xt.toarray().astype(np.float32)
+        yt = yt.astype('str')
+        return x, xt, y, yt
+    else:
+        x_train, x_test, y_train, y_test = train_test_split(x, y, test_size=0.2)
+        return x_train, x_test, y_train, y_test
+
+
+def read_dataset(name):
+    if name in ['a9a', 'sen', 'sensit', 'covtype', 'HIGGS']:
+        return read_libsvm(name)
+    if name == 'ddos':
+        _path = DATA_PATH / 'ddos_noniid'
+        xs, ys = [], []
+        files = list(_path.rglob('*.csv'))
+        for fp in tqdm(files, desc='Reading'):
+            data = pd.read_csv(str(fp), skipinitialspace=True, low_memory=False)
+            data['SimillarHTTP'] = 0.
+            x = data.iloc[:, -80:-1].to_numpy().astype(np.float32)
+            y = data.iloc[:, -1].to_numpy().astype('str').tolist()
+            x[x == np.inf] = 1.
+            x[np.isnan(x)] = 0.
+            xs += x.tolist()
+            ys += y
+        x_train, x_test, y_train, y_test = train_test_split(xs, ys, test_size=0.2)
+        return x_train, x_test, y_train, y_test
 
 
 def split_data(xs, n_type):
@@ -36,6 +65,6 @@ def get_clients_with_xy(xs, ys, n_type):
         ret.append(c)
     c = Client(n)
     c.attrs = 'label'
-    c.dataset = ys.astype('int').tolist()
+    c.dataset = ys
     ret.append(c)
     return ret
