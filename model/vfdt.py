@@ -1,3 +1,5 @@
+import time
+
 import numpy as np
 from collections import defaultdict, Iterable
 from tqdm.auto import tqdm
@@ -157,7 +159,8 @@ class Vnode:
 
 # very fast decision tree class, i.e. hoeffding tree
 class Vfdt:
-    def __init__(self, attrs, delta=1e-7, nmin=500, tau=0.05, max_depth=32, regional_count=None, verbose=True):
+    def __init__(self, attrs, delta=1e-7, nmin=500, tau=0.05, max_depth=32, regional_count=None, verbose=True,
+                 record_speed=False):
         self.max_depth = max_depth
         if regional_count is None:
             self.regional = False
@@ -177,6 +180,9 @@ class Vfdt:
         self.root = Vnode(base=self, possible_features=attrs)
         self.last_node = 0
         self.T = 100000
+        self.record_speed = record_speed
+        if self.record_speed:
+            self.start_t = time.time()
 
     def update(self, xs, ys):
         if not isinstance(ys, Iterable):
@@ -187,11 +193,11 @@ class Vfdt:
                 for i in tqdm(range(1, len(data) + 1)):
                     x, y = data[i - 1]
                     self.update_single(x, y)
-                    # if i % self.T == 0:
-                    #     self.vals.append(self.root.num_vals())
             else:
                 for x, y in zip(xs, ys):
                     self.update_single(x, y)
+
+        # if self.root.tot_data %
 
     def partial_fit(self, xs, ys):
         return self.update(xs, ys)

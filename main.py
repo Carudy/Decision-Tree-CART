@@ -8,6 +8,9 @@ if __name__ == '__main__':
 
     # init center & participants
     attrs = [hash_sha(str(i)) for i in range(len(x_test[0]))]
+    if ARGS.n_client > len(attrs):
+        ARGS.n_client = len(attrs)
+        log(f'Changed n_client to {len(attrs)}.')
     clients = get_clients_with_xy(x_train, y_train, ARGS.n_client)
     center = Center(attrs=attrs)
 

@@ -23,7 +23,7 @@ def read_libsvm(name):
 
 
 def read_dataset(name):
-    if name in ['a9a', 'sen', 'sensit', 'covtype', 'HIGGS']:
+    if name in ['a9a', 'sen', 'sensit', 'covtype', 'HIGGS', 'cod-rna']:
         return read_libsvm(name)
     if name == 'ddos':
         _path = DATA_PATH / 'ddos_noniid'
@@ -38,7 +38,7 @@ def read_dataset(name):
             x[np.isnan(x)] = 0.
             xs += x.tolist()
             ys += y
-        x_train, x_test, y_train, y_test = train_test_split(xs, ys, test_size=0.2)
+        x_train, x_test, y_train, y_test = train_test_split(np.array(xs), np.array(ys), test_size=0.2)
         return x_train, x_test, y_train, y_test
 
 

@@ -8,7 +8,7 @@ from pathlib import Path
 class MyParser:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('--dataset', default='ddos')
+        self.parser.add_argument('--dataset', default='cod-rna')
         self.parser.add_argument('--nmin', default=500)
         self.parser.add_argument('--n_client', default=10)
         self.parser.add_argument('--n_round', default=12)
