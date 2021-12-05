@@ -12,7 +12,8 @@ class Center:
     def __init__(self, attrs):
         self.attrs = attrs
         self.n_attr = len(attrs)
-        self.tree = Vfdt(attrs=self.attrs, verbose=False)
+        self.tree = Vfdt(attrs=self.attrs, verbose=False, nmin=ARGS.nmin, record=ARGS.record,
+                         regional_count=(ARGS.zeta / ARGS.gamma))
         self.new_data = defaultdict(list)
         self.samples = []
         self.train_x = []

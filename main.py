@@ -29,22 +29,22 @@ if __name__ == '__main__':
                 enc_keys[str(i)] = c.keys[str(i)]
 
     # test ope model
-    ope_test(x_train, x_test, y_train, y_test, enc_keys)
+    # ope_test(x_train, x_test, y_train, y_test, enc_keys)
 
     # vertical FL training
-    # for e in tqdm(range(ARGS.n_round), desc='FL Train'):
-    #     for c in clients:
-    #         c.send_batch()
-    #     center.aggregate()
-    #     center.train()
-    #
-    # # test encrypted model
-    # center_test(center, x_test, y_test, enc_keys)
-    #
-    # # test decrypted model
-    # center.decode_tree(enc_keys)
-    # pred = center.tree.predict(x_test)
-    # acc = accuracy_score(pred, [hash_sha(str(y)) for y in y_test])
-    # log(f'Decrypted tree acc: {acc * 100.}%')
+    for e in tqdm(range(ARGS.n_round), desc='FL Train'):
+        for c in clients:
+            c.send_batch()
+        center.aggregate()
+        center.train()
+
+    # test encrypted model
+    center_test(center, x_test, y_test, enc_keys)
+
+    # test decrypted model
+    center.decode_tree(enc_keys)
+    pred = center.tree.predict(x_test)
+    acc = accuracy_score(pred, [hash_sha(str(y)) for y in y_test])
+    log(f'Decrypted tree acc: {acc * 100.}%')
 
     LOG_FP.close()

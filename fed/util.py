@@ -8,12 +8,14 @@ from pathlib import Path
 class MyParser:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('--dataset', default='covtype')
+        self.parser.add_argument('--dataset', default='sen')
         self.parser.add_argument('--nmin', default=500)
         self.parser.add_argument('--n_client', default=10)
         self.parser.add_argument('--n_round', default=12)
         self.parser.add_argument('--dp', default=True)
         self.parser.add_argument('--gamma', default=0.04)
+        self.parser.add_argument('--zeta', default=1.0)
+        self.parser.add_argument('--record', default=False)
         self.parser.add_argument('--data_path', default=r'D:\work\py\Decision-Tree-CART\data')
         self.args = self.parser.parse_args()
 
@@ -43,4 +45,5 @@ def log(*x):
 
 
 log(f'Dataset: {ARGS.dataset}')
+log(f'Params: lambda: {ARGS.gamma}\tzeta: {ARGS.zeta}')
 log(f'#participant: {ARGS.n_client}\t#Epoch: {ARGS.n_round}')

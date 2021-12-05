@@ -160,7 +160,7 @@ class Vnode:
 # very fast decision tree class, i.e. hoeffding tree
 class Vfdt:
     def __init__(self, attrs, delta=1e-7, nmin=500, tau=0.05, max_depth=32, regional_count=None, verbose=True,
-                 record_speed=False):
+                 record=False):
         self.max_depth = max_depth
         if regional_count is None:
             self.regional = False
@@ -179,10 +179,14 @@ class Vfdt:
         self.tau = tau
         self.root = Vnode(base=self, possible_features=attrs)
         self.last_node = 0
+        self.tot_data = 0
         self.T = 100000
-        self.record_speed = record_speed
-        if self.record_speed:
+        self.record = record
+        if record:
+            self.last_data = 0
             self.start_t = time.time()
+            self.xp = []
+            self.yp = defaultdict(list)
 
     def update(self, xs, ys):
         if not isinstance(ys, Iterable):
@@ -203,6 +207,14 @@ class Vfdt:
         return self.update(xs, ys)
 
     def update_single(self, x, y):
+        self.tot_data += 1
+        if self.record and self.tot_data % 1500 == 0:
+            now = time.time()
+            self.xp.append(self.tot_data)
+            self.yp['num_record'].append(self.root.num_vals())
+            self.yp['speed'].append((self.tot_data - self.last_data) / ((now - self.start_t) * 1000.))
+            self.last_data = self.tot_data
+            self.start_t = time.time()
         node = self.root.sort_to_leaf(x)
         node.update_statistics(x, y)
         node.attempt_split()
