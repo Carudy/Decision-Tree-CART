@@ -1,3 +1,4 @@
+# cas-gpu-ge /home/hzy/py/FedIDT-OPE
 from fed import *
 
 if __name__ == '__main__':
@@ -12,6 +13,7 @@ if __name__ == '__main__':
         ARGS.n_client = len(attrs)
         log(f'Changed n_client to {len(attrs)}.')
     clients = get_clients_with_xy(x_train, y_train)
+    log(f'#participants: {len(clients)}')
     center = Center(attrs=attrs)
 
     # negotiate keys

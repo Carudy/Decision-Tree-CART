@@ -8,17 +8,18 @@ from pathlib import Path
 class MyParser:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('--dataset', default='covtype')
+        self.parser.add_argument('--dataset', default='letter')
         self.parser.add_argument('--nmin', default=500)
         self.parser.add_argument('--n_client', default=10)
         self.parser.add_argument('--n_round', default=12)
-        self.parser.add_argument('--non_iid', default=True)
-        self.parser.add_argument('--n_class', default=2)
+        self.parser.add_argument('--non_iid', default=False)
+        self.parser.add_argument('--n_class', default=13)
         self.parser.add_argument('--dp', default=True)
         self.parser.add_argument('--gamma', default=0.04)
         self.parser.add_argument('--zeta', default=1.0)
         self.parser.add_argument('--record', default=False)
-        self.parser.add_argument('--data_path', default=r'D:\work\py\Decision-Tree-CART\data')
+        _dpath = r'D:\work\py\Decision-Tree-CART\data' if os.name == 'nt' else r'/home/hzy/dataset'
+        self.parser.add_argument('--data_path', default=_dpath)
         self.args = self.parser.parse_args()
 
     def __getitem__(self, item):

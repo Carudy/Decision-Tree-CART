@@ -4,6 +4,7 @@ from sklearn.datasets import load_svmlight_file
 from sklearn.model_selection import train_test_split
 
 from .util import *
+from .encrypt import *
 from .client import Client
 
 
@@ -55,6 +56,13 @@ def split_data(xs):
     return ret
 
 
+def sample_to_dict(uid, x, attrs):
+    ret = {'uid': str(uid)}
+    for k, v in zip(attrs, x):
+        ret[k] = v
+    return ret
+
+
 def get_clients_with_xy(xs, ys):
     data_pieces = split_data(xs)
     ret = []
@@ -65,18 +73,19 @@ def get_clients_with_xy(xs, ys):
     for piece in data_pieces:
         if not ARGS.non_iid:
             c = Client(n)
-            n += 1
-            c.dataset = piece
             c.attrs = [str(i) for i in piece.columns]
+            c.dataset = [sample_to_dict(i, piece.iloc[i, :].tolist(), c.attrs) for i in range(len(piece))]
             ret.append(c)
+            n += 1
         else:
             n_label_client = len(labels) / ARGS.n_class
             label_piece = np.array_split(labels, n_label_client)
             for lp in label_piece:
-                data_piece = [piece.iloc[i, :].tolist() for i in range(len(piece)) if ys[i] in lp]
                 c = Client(n)
-                c.dataset = data_piece
                 c.attrs = [str(i) for i in piece.columns]
+                data_piece = [sample_to_dict(i, piece.iloc[i, :].tolist(), c.attrs) for i in range(len(piece)) if
+                              ys[i] in lp]
+                c.dataset = data_piece
                 ret.append(c)
                 log(f'Client {n}, attrs: {c.attrs}, labels: {str(lp)}')
                 n += 1
@@ -84,6 +93,6 @@ def get_clients_with_xy(xs, ys):
         log('Done.')
     c = Client(n)
     c.attrs = 'label'
-    c.dataset = ys
+    c.dataset = [{'uid': str(uid), 'label': ys[uid]} for uid in range(len(ys))]
     ret.append(c)
     return ret

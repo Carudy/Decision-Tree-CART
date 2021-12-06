@@ -30,34 +30,18 @@ class Client:
             for keys in self.receive_keys.values():
                 self.keys[attr] = (self.keys[attr] + keys[attr]) % NP
 
-    def get_sample(self, i):
-        if isinstance(self.dataset, list):
-            vals = self.dataset[i]
-        else:
-            vals = self.dataset.iloc[i, :].tolist()
-        ret = {}
-        for k, v in zip(self.attrs, vals):
-            ret[k] = v
-        return ret
-
-    def enc_pure(self, x):
-        ret = {}
-        for k, v in x.items():
-            ret[hash_sha(k)] = ope(v, self.keys[k], dp=self.dp)
-        return ret
-
     def enc_sample(self, i):
         ret = {
             'pid': self.id,
-            'uid': hash_sha(str(i)),
+            'uid': hash_sha(self.dataset[i]['uid']),
         }
-        ret.update(self.enc_pure(self.get_sample(i)))
+        for k, v in self.dataset[i].items():
+            if k != 'uid':
+                ret[hash_sha(k)] = ope(v, self.keys[k], dp=self.dp)
         return ret
 
-    def split_data(self, n, shuffle=False):
+    def split_data(self, n):
         _l = list(range(len(self.dataset)))
-        if shuffle:
-            random.shuffle(_l)
         self.data_batches = np.array_split(_l, n)
         self.to_send_id = 0
 
@@ -67,5 +51,6 @@ class Client:
             return
         for i in self.data_batches[self.to_send_id]:
             self.center.receive_sample(self.enc_sample(i) if self.attrs != 'label' else
-                                       {'uid': hash_sha(str(i)), 'label': hash_sha(str(self.dataset[i]))})
+                                       {'uid': hash_sha(self.dataset[i]['uid']),
+                                        'label': hash_sha(self.dataset[i]['label'])})
         self.to_send_id += 1

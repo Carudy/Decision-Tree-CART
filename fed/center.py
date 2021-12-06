@@ -46,6 +46,9 @@ class Center:
                 self.dfs_sample(new_samples, agg, {'uid': uid}, list(agg.keys()), 0)
                 self.samples += new_samples
 
+        for uid in self.new_data:
+            self.new_data[uid].clear()
+
         remain = []
         self.train_x = []
         self.train_y = []
