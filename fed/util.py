@@ -8,10 +8,12 @@ from pathlib import Path
 class MyParser:
     def __init__(self):
         self.parser = argparse.ArgumentParser()
-        self.parser.add_argument('--dataset', default='sen')
+        self.parser.add_argument('--dataset', default='covtype')
         self.parser.add_argument('--nmin', default=500)
         self.parser.add_argument('--n_client', default=10)
         self.parser.add_argument('--n_round', default=12)
+        self.parser.add_argument('--non_iid', default=True)
+        self.parser.add_argument('--n_class', default=2)
         self.parser.add_argument('--dp', default=True)
         self.parser.add_argument('--gamma', default=0.04)
         self.parser.add_argument('--zeta', default=1.0)
@@ -32,11 +34,6 @@ DATA_PATH = Path(ARGS.data_path)
 _time_str = time.strftime("%m-%d-%H.%M", time.localtime())
 LOG_FP = open(BASE_PATH / f'result-{_time_str}.txt', 'w', encoding='utf-8')
 
-if ARGS.dataset == 'HIGGS':
-    ARGS.nmin = 5000
-elif ARGS.dataset == 'ddos':
-    ARGS.nmin = 2500
-
 
 def log(*x):
     print(*x)
@@ -46,4 +43,4 @@ def log(*x):
 
 log(f'Dataset: {ARGS.dataset}')
 log(f'Params: lambda: {ARGS.gamma}\tzeta: {ARGS.zeta}')
-log(f'#participant: {ARGS.n_client}\t#Epoch: {ARGS.n_round}')
+log(f'#participant_type: {ARGS.n_client}\t#Epoch: {ARGS.n_round}')

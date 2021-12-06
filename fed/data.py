@@ -38,14 +38,16 @@ def read_dataset(name):
             ys += y
         x_train, x_test, y_train, y_test = train_test_split(np.array(xs), np.array(ys), test_size=0.2)
         return x_train, x_test, y_train, y_test
-    elif name in ['a9a', 'sen', 'sensit', 'covtype', 'HIGGS', 'cod-rna', 'mushrooms', 'mnist']:
+    elif name in ['a9a', 'sen', 'sensit', 'covtype', 'HIGGS', 'cod-rna', 'mushrooms', 'mnist', 'sensorless', 'letter']:
+        return read_libsvm(name)
+    else:
         return read_libsvm(name)
 
 
-def split_data(xs, n_type):
+def split_data(xs):
     n_attrs = len(xs[0])
     ds = pd.DataFrame(xs)
-    attr_pieces = np.array_split(range(n_attrs), n_type)
+    attr_pieces = np.array_split(range(n_attrs), ARGS.n_client)
     ret = []
     for piece in attr_pieces:
         data_piece = ds.iloc[:, piece[0]:piece[-1] + 1]
@@ -53,16 +55,33 @@ def split_data(xs, n_type):
     return ret
 
 
-def get_clients_with_xy(xs, ys, n_type):
-    data_pieces = split_data(xs, n_type)
+def get_clients_with_xy(xs, ys):
+    data_pieces = split_data(xs)
     ret = []
     n = 0
+    if ARGS.non_iid:
+        labels = list(set(ys))
+        log('Constructing non-iid clients.')
     for piece in data_pieces:
-        c = Client(n)
-        n += 1
-        c.dataset = piece
-        c.attrs = [str(i) for i in piece.columns]
-        ret.append(c)
+        if not ARGS.non_iid:
+            c = Client(n)
+            n += 1
+            c.dataset = piece
+            c.attrs = [str(i) for i in piece.columns]
+            ret.append(c)
+        else:
+            n_label_client = len(labels) / ARGS.n_class
+            label_piece = np.array_split(labels, n_label_client)
+            for lp in label_piece:
+                data_piece = [piece.iloc[i, :].tolist() for i in range(len(piece)) if ys[i] in lp]
+                c = Client(n)
+                c.dataset = data_piece
+                c.attrs = [str(i) for i in piece.columns]
+                ret.append(c)
+                log(f'Client {n}, attrs: {c.attrs}, labels: {str(lp)}')
+                n += 1
+    if ARGS.non_iid:
+        log('Done.')
     c = Client(n)
     c.attrs = 'label'
     c.dataset = ys

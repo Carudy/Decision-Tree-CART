@@ -30,8 +30,11 @@ class Client:
             for keys in self.receive_keys.values():
                 self.keys[attr] = (self.keys[attr] + keys[attr]) % NP
 
-    def get_sample(self, j):
-        vals = self.dataset.iloc[j, :].tolist()
+    def get_sample(self, i):
+        if isinstance(self.dataset, list):
+            vals = self.dataset[i]
+        else:
+            vals = self.dataset.iloc[i, :].tolist()
         ret = {}
         for k, v in zip(self.attrs, vals):
             ret[k] = v
