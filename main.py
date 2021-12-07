@@ -39,6 +39,9 @@ if __name__ == '__main__':
         for c in clients:
             c.send_batch()
         center.aggregate()
+        log(f'Round: {e+1}')
+        if center.tree.tot_data > 0:
+            center_test(center, x_test, y_test, enc_keys)
         center.train()
 
     # test encrypted model
