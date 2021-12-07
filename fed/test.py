@@ -9,7 +9,7 @@ from model import Vfdt
 def center_test(center, xs, ys, keys):
     _xs = [enc_dict({str(k): x[k] for k in range(len(x))}, keys) for x in xs]
     pred = center.tree.predict(_xs)
-    acc = accuracy_score(pred, [hash_sha(str(y)) for y in ys])
+    acc = accuracy_score(pred, [hash_sha(y) for y in ys])
     log(f'Encrypted tree acc: {acc * 100.}%')
 
 

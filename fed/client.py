@@ -40,9 +40,11 @@ class Client:
                 ret[hash_sha(k)] = ope(v, self.keys[k], dp=self.dp)
         return ret
 
-    def split_data(self, n):
+    def split_data(self):
         _l = list(range(len(self.dataset)))
-        self.data_batches = np.array_split(_l, n)
+        if ARGS.shuffle:
+            random.shuffle(_l)
+        self.data_batches = np.array_split(_l, ARGS.n_round)
         self.to_send_id = 0
 
     def send_batch(self):
@@ -50,7 +52,6 @@ class Client:
             print(f'Party {self.id} has already sent all data.')
             return
         for i in self.data_batches[self.to_send_id]:
-            self.center.receive_sample(self.enc_sample(i) if self.attrs != 'label' else
-                                       {'uid': hash_sha(self.dataset[i]['uid']),
-                                        'label': hash_sha(self.dataset[i]['label'])})
+            self.center.receive_sample(
+                self.enc_sample(i) if self.attrs != 'label' else {k: hash_sha(v) for k, v in self.dataset[i].items()})
         self.to_send_id += 1

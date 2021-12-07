@@ -5,7 +5,7 @@ import numpy as np
 from .util import *
 
 
-@lru_cache
+@lru_cache(None)
 def hash_sha(x):
     return hashlib.sha256(x.encode()).hexdigest()
 

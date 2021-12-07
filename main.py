@@ -1,4 +1,5 @@
 # cas-gpu-ge /home/hzy/py/FedIDT-OPE
+# msi test
 from fed import *
 
 if __name__ == '__main__':
@@ -19,7 +20,7 @@ if __name__ == '__main__':
     # negotiate keys
     for c in clients:
         c.center = center
-        c.split_data(ARGS.n_round)
+        c.split_data()
         c.send_keys(clients)
 
     # get global keys for eval
@@ -31,7 +32,7 @@ if __name__ == '__main__':
                 enc_keys[str(i)] = c.keys[str(i)]
 
     # test ope model
-    # ope_test(x_train, x_test, y_train, y_test, enc_keys, ope=False)
+    # ope_test(x_train, x_test, y_train, y_test, enc_keys)
 
     # vertical FL training
     for e in tqdm(range(ARGS.n_round), desc='FL Train'):
